@@ -1,7 +1,7 @@
 # ---- Build stage ----
 FROM golang:1.26-alpine AS builder
 
-RUN apk add --no-cache gcc musl-dev sqlite-dev
+RUN apk add --no-cache gcc musl-dev sqlite-dev curl
 
 WORKDIR /build
 
@@ -12,6 +12,10 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
+
+# Fetch Alpine.js so it's always bundled (it is gitignored and not committed)
+RUN mkdir -p web/static/js && \
+    curl -sL https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js -o web/static/js/alpine.min.js
 
 # Generate Templ components
 RUN templ generate
