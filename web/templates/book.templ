@@ -52,7 +52,7 @@ templ BookPage(user *models.User, book *models.Audiobook, notes []models.Note) {
 					if book.Description != "" {
 						<p class="book-detail__description">{ book.Description }</p>
 					}
-					<div class="book-detail__tags" x-data={ fmt.Sprintf("tagEditor({ bookID: %d })", book.ID) }>
+					<div class="book-detail__tags" x-data={ tagEditorData(book.ID, book.Tags) }>
 						<div class="tags-list">
 							<template x-for="tag in tags" :key="tag">
 								<span class="tag">
@@ -114,4 +114,19 @@ templ BookPage(user *models.User, book *models.Audiobook, notes []models.Note) {
 			</section>
 		</div>
 	}
+}
+
+func tagEditorData(bookID int64, tags []models.Tag) string {
+	tagsJSON := "[]"
+	if len(tags) > 0 {
+		tagsJSON = "["
+		for i, t := range tags {
+			if i > 0 {
+				tagsJSON += ","
+			}
+			tagsJSON += fmt.Sprintf("%q", t.Name)
+		}
+		tagsJSON += "]"
+	}
+	return fmt.Sprintf(`tagEditor({ bookID: %d, initialTags: %s })`, bookID, tagsJSON)
 }

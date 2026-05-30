@@ -257,16 +257,13 @@ async function deleteNote(noteID) {
 /* ============================================================
    Tag editor component
    ============================================================ */
-function tagEditor({ bookID }) {
+function tagEditor({ bookID, initialTags }) {
   return {
-    tags: [],
+    tags: initialTags || [],
     newTag: '',
 
     init() {
-      // Seed from the rendered page tags (parsed from DOM).
-      // A cleaner approach would be a data attribute or API call.
-      const tagEls = this.$el.querySelectorAll('.tag span[x-text]');
-      this.tags = Array.from(tagEls).map(el => el.textContent.trim()).filter(Boolean);
+      // Tags are seeded directly from Templ parameters.
     },
 
     addTag() {
