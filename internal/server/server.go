@@ -2,6 +2,7 @@ package server
 
 import (
 	"database/sql"
+	"mime"
 	"net/http"
 
 	"github.com/tmunongo/shelfstone/internal/auth"
@@ -19,6 +20,19 @@ type Config struct {
 
 // New builds and returns the root HTTP handler with all routes registered.
 func New(cfg Config) http.Handler {
+	// Register standard MIME types to ensure they are served correctly on all platforms
+	_ = mime.AddExtensionType(".js", "text/javascript")
+	_ = mime.AddExtensionType(".css", "text/css")
+	_ = mime.AddExtensionType(".svg", "image/svg+xml")
+	_ = mime.AddExtensionType(".png", "image/png")
+	_ = mime.AddExtensionType(".jpg", "image/jpeg")
+	_ = mime.AddExtensionType(".jpeg", "image/jpeg")
+	_ = mime.AddExtensionType(".gif", "image/gif")
+	_ = mime.AddExtensionType(".webp", "image/webp")
+	_ = mime.AddExtensionType(".ico", "image/x-icon")
+	_ = mime.AddExtensionType(".json", "application/json")
+	_ = mime.AddExtensionType(".wasm", "application/wasm")
+
 	h := &handlers{cfg: cfg}
 	mux := http.NewServeMux()
 
