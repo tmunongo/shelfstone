@@ -31,29 +31,37 @@ func (h *handlers) apiBookFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	absDir := filepath.Join(h.cfg.DataDir, book.FilePath)
-	entries, err := os.ReadDir(absDir)
+	absPath := filepath.Join(h.cfg.DataDir, book.FilePath)
+	stat, err := os.Stat(absPath)
 	if err != nil {
-		jsonError(w, "cannot read directory", http.StatusInternalServerError)
+		jsonError(w, "cannot locate path", http.StatusInternalServerError)
 		return
 	}
 
 	var files []string
-	for _, e := range entries {
-		if e.IsDir() {
-			continue
+	if !stat.IsDir() {
+		files = []string{filepath.ToSlash(book.FilePath)}
+	} else {
+		entries, err := os.ReadDir(absPath)
+		if err != nil {
+			jsonError(w, "cannot read directory", http.StatusInternalServerError)
+			return
 		}
-		ext := strings.ToLower(filepath.Ext(e.Name()))
-		switch ext {
-		case ".mp3", ".m4b", ".m4a", ".ogg", ".opus", ".flac":
-			// Store relative to data dir so it can be served under /media/
-			rel := filepath.Join(book.FilePath, e.Name())
-			files = append(files, filepath.ToSlash(rel))
-		}
-	}
 
-	// Natural sort so Part 1, Part 2 ... Part 10 comes out correctly.
-	sort.Strings(files)
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
+			}
+			ext := strings.ToLower(filepath.Ext(e.Name()))
+			switch ext {
+			case ".mp3", ".m4b", ".m4a", ".ogg", ".opus", ".flac":
+				// Store relative to data dir so it can be served under /media/
+				rel := filepath.Join(book.FilePath, e.Name())
+				files = append(files, filepath.ToSlash(rel))
+			}
+		}
+		sort.Strings(files)
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"files": files})

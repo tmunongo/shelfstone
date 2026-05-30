@@ -36,46 +36,52 @@ func Extract(absDir, relDir, ext string) (*Meta, error) {
 	if err != nil {
 		return nil, err
 	}
+	return ExtractFile(primary, relDir)
+}
+
+// ExtractFile reads metadata from a single specific audio file.
+// relPath is the path relative to the data directory (used for fallback title/author).
+func ExtractFile(absFile, relPath string) (*Meta, error) {
+	dir := filepath.Dir(absFile)
+	relDir := filepath.Dir(relPath)
 
 	var meta *Meta
-	f, err := os.Open(primary)
+	f, err := os.Open(absFile)
 	if err == nil {
 		defer f.Close()
 		m, err := tag.ReadFrom(f)
 		if err == nil {
+			// For file-level books, prefer embedded title then filename fallback.
 			meta = &Meta{
-				Title:  coalesce(m.Title(), titleFromDir(relDir)),
+				Title:  coalesce(m.Title(), TitleFromFile(relPath)),
 				Author: coalesce(m.Artist(), m.AlbumArtist(), authorFromDir(relDir)),
 			}
-
-			// Some encoders put the narrator in the Composer tag.
 			if c := m.Composer(); c != "" {
 				meta.Narrator = c
 			}
-
 			if comment := m.Comment(); comment != "" {
 				meta.Description = comment
 			}
-
-			// Cover art — prefer embedded, then look for common image files.
 			if pic := m.Picture(); pic != nil {
-				// Write the cover to a sidecar file so we can serve it over HTTP.
-				coverPath := filepath.Join(absDir, "cover.extracted.jpg")
+				coverPath := filepath.Join(dir, "cover.extracted.jpg")
 				if err := writeCoverIfAbsent(coverPath, pic.Data); err == nil {
 					meta.CoverPath = filepath.Join(relDir, "cover.extracted.jpg")
 				}
 			} else {
-				meta.CoverPath = findCoverFile(absDir, relDir)
+				meta.CoverPath = findCoverFile(dir, relDir)
 			}
 		}
 	}
 
 	if meta == nil {
-		meta = Fallback(absDir, relDir, ext)
+		meta = &Meta{
+			Title:     TitleFromFile(relPath),
+			Author:    authorFromDir(relDir),
+			CoverPath: findCoverFile(dir, relDir),
+		}
 	}
 
-	// Probe duration and chapters using ffprobe
-	duration, chapters, err := probeMetadata(primary)
+	duration, chapters, err := probeMetadata(absFile)
 	if err == nil {
 		meta.DurationSec = duration
 		meta.Chapters = chapters
@@ -193,6 +199,34 @@ func findPrimaryFile(dir, ext string) (string, error) {
 func titleFromDir(relDir string) string {
 	parts := strings.Split(filepath.ToSlash(relDir), "/")
 	return parts[len(parts)-1]
+}
+
+// TitleFromFile derives a human-readable title from a relative file path,
+// stripping the extension and trimming common track-number prefixes.
+// E.g. "Blinkist/Biography/01 - Steve Jobs.mp3" -> "Steve Jobs"
+func TitleFromFile(relFile string) string {
+	base := filepath.Base(relFile)
+	// Strip extension.
+	base = strings.TrimSuffix(base, filepath.Ext(base))
+	// Remove leading track numbers like "01 - ", "01. ", "01 "
+	for _, sep := range []string{" - ", ". ", " "} {
+		idx := strings.Index(base, sep)
+		if idx > 0 && idx <= 3 {
+			prefix := base[:idx]
+			allDigits := true
+			for _, c := range prefix {
+				if c < '0' || c > '9' {
+					allDigits = false
+					break
+				}
+			}
+			if allDigits {
+				base = strings.TrimSpace(base[idx+len(sep):])
+				break
+			}
+		}
+	}
+	return base
 }
 
 // authorFromDir derives an author from the parent directory name.
