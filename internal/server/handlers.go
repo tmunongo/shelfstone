@@ -195,6 +195,13 @@ func (h *handlers) listenPage(w http.ResponseWriter, r *http.Request) {
 	templates.ListenPage(user, book).Render(r.Context(), w)
 }
 
+// ---- Offline Fallback ----
+
+func (h *handlers) offlinePage(w http.ResponseWriter, r *http.Request) {
+	user := userFromContext(r.Context())
+	templates.OfflinePage(user).Render(r.Context(), w)
+}
+
 // ---- Helpers ----
 
 func (h *handlers) loadBook(r *http.Request) (*dbpkg.AudiobookFull, error) {

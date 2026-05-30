@@ -140,7 +140,7 @@ func playerData(book *models.Audiobook) string {
 	audioSrc := fmt.Sprintf("/media/%s/", book.FilePath)
 
 	return fmt.Sprintf(
-		`playerApp({bookID:%d,audioSrc:%q,startPos:%.2f,chapters:%s,bookAuthor:%q})`,
-		book.ID, audioSrc, startPos, chaptersJSON, book.Author,
+		`playerApp({bookID:%d,audioSrc:%q,startPos:%.2f,chapters:%s,bookAuthor:%q,bookTitle:%q,coverPath:%q})`,
+		book.ID, audioSrc, startPos, chaptersJSON, book.Author, book.Title, book.CoverPath,
 	)
 }

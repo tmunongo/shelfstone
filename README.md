@@ -1,5 +1,9 @@
 # Shelfstone
 
+<p align="center">
+  <img src="web/static/images/logo.png" alt="Shelfstone Logo" width="200" style="border-radius: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.6);" />
+</p>
+
 [![Publish Docker Image](https://github.com/tmunongo/shelfstone/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/tmunongo/shelfstone/actions/workflows/docker-publish.yml)
 
 A self-hosted audiobook server. Your books, your server.

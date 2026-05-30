@@ -25,6 +25,17 @@ func New(cfg Config) http.Handler {
 	// Static assets
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 
+	// PWA routes served at root scope
+	mux.HandleFunc("GET /manifest.json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/manifest+json")
+		http.ServeFile(w, r, "web/static/manifest.json")
+	})
+	mux.HandleFunc("GET /sw.js", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/javascript")
+		w.Header().Set("Service-Worker-Allowed", "/")
+		http.ServeFile(w, r, "web/static/sw.js")
+	})
+
 	// Serve cover art and audio files from the data directory (read-only)
 	mux.Handle("GET /media/", http.StripPrefix("/media/", http.FileServer(http.Dir(cfg.DataDir))))
 
@@ -38,6 +49,7 @@ func New(cfg Config) http.Handler {
 	mux.Handle("GET /library", h.require(http.HandlerFunc(h.library)))
 	mux.Handle("GET /book/{id}", h.require(http.HandlerFunc(h.bookPage)))
 	mux.Handle("GET /book/{id}/listen", h.require(http.HandlerFunc(h.listenPage)))
+	mux.Handle("GET /offline", h.require(http.HandlerFunc(h.offlinePage)))
 
 	// API — progress sync
 	mux.Handle("POST /api/progress/{id}", h.require(http.HandlerFunc(h.apiSaveProgress)))

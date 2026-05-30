@@ -1,0 +1,39 @@
+{
+  "name": "Shelfstone",
+  "short_name": "Shelfstone",
+  "description": "Tactile, self-hosted audiobook server & player.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#120f0d",
+  "theme_color": "#120f0d",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/images/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/static/images/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    },
+    {
+      "src": "/static/images/logo.png",
+      "type": "image/png",
+      "sizes": "1024x1024"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Library",
+      "url": "/library",
+      "icons": [
+        {
+          "src": "/static/images/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

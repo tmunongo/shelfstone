@@ -1,0 +1,40 @@
+package templates
+
+import (
+	"github.com/tmunongo/shelfstone/internal/models"
+)
+
+templ OfflinePage(user *models.User) {
+	@Base(user, "Offline") {
+		<div class="offline-container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; text-align: center; max-width: 600px; margin: 0 auto; padding: 2rem;">
+			<div class="offline-icon-container" style="background: var(--color-surface-raised); border: 1px solid var(--color-border); border-radius: 50%; width: 96px; height: 96px; display: flex; align-items: center; justify-content: center; margin-bottom: 2rem; box-shadow: var(--shadow-md);">
+				<svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--color-accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.5M5 12.5a10.94 10.94 0 0 1 5.83-2.84M8.53 16.03a6.11 6.11 0 0 1 1.77-1M13.7 15a6.11 6.11 0 0 1 1.77 1M12 20h.01" />
+				</svg>
+			</div>
+			
+			<h2 style="font-size: var(--font-size-2xl); font-weight: 800; color: var(--color-text); margin-bottom: 1rem; letter-spacing: -0.02em;">You are offline</h2>
+			
+			<p style="font-size: var(--font-size-base); color: var(--color-text-muted); line-height: 1.6; margin-bottom: 2rem; max-width: 45ch;">
+				Shelfstone lost its connection to your server. However, any audiobooks you downloaded to your device are fully available to listen to right now!
+			</p>
+			
+			<div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;">
+				<a href="/" class="btn btn--primary">
+					<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+						<polyline points="9 22 9 12 15 12 15 22"/>
+					</svg>
+					Go Home
+				</a>
+				<a href="/library" class="btn btn--secondary">
+					<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+						<path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+					</svg>
+					Browse Library
+				</a>
+			</div>
+		</div>
+	}
+}
