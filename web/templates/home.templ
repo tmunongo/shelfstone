@@ -1,0 +1,79 @@
+package templates
+
+import (
+	"fmt"
+	"github.com/tmunongo/shelfstone/internal/models"
+)
+
+templ HomePage(user *models.User, recent []*models.Audiobook) {
+	@Base(user, "Home") {
+		<div class="home">
+			if len(recent) == 0 {
+				<section class="home__empty">
+					<p>Your library is quiet.</p>
+					<a href="/library" class="btn btn--primary">Browse Library</a>
+				</section>
+			} else {
+				<section class="home__continue">
+					<h2 class="section-title">Continue Listening</h2>
+					<a href={ templ.SafeURL(fmt.Sprintf("/book/%d/listen", recent[0].ID)) }
+					   class="resume-card">
+						<div class="resume-card__cover">
+							if recent[0].CoverPath != "" {
+								<img src={ fmt.Sprintf("/media/%s", recent[0].CoverPath) }
+								     alt={ recent[0].Title }/>
+							} else {
+								@CoverPlaceholder(recent[0].Title)
+							}
+						</div>
+						<div class="resume-card__info">
+							<p class="resume-card__author">{ recent[0].Author }</p>
+							<h3 class="resume-card__title">{ recent[0].Title }</h3>
+							if recent[0].Progress != nil {
+								<div class="progress-bar">
+									<div class="progress-bar__fill"
+									     style={ fmt.Sprintf("width:%.1f%%", progressPct(recent[0])) }>
+									</div>
+								</div>
+								<p class="resume-card__position">
+									{ formatDuration(int64(recent[0].Progress.PositionSec)) } in
+								</p>
+							}
+							<span class="btn btn--primary resume-card__btn">Resume →</span>
+						</div>
+					</a>
+				</section>
+				if len(recent) > 1 {
+					<section class="home__recent">
+						<h2 class="section-title">Recently Played</h2>
+						<div class="book-grid">
+							for _, b := range recent[1:] {
+								@BookCard(b)
+							}
+						</div>
+					</section>
+				}
+			}
+		</div>
+	}
+}
+
+func progressPct(b *models.Audiobook) float64 {
+	if b.Progress == nil || b.DurationSec == 0 {
+		return 0
+	}
+	pct := (b.Progress.PositionSec / float64(b.DurationSec)) * 100
+	if pct > 100 {
+		return 100
+	}
+	return pct
+}
+
+func formatDuration(secs int64) string {
+	h := secs / 3600
+	m := (secs % 3600) / 60
+	if h > 0 {
+		return fmt.Sprintf("%dh %dm", h, m)
+	}
+	return fmt.Sprintf("%dm", m)
+}

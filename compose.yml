@@ -1,0 +1,23 @@
+services:
+  shelfstone:
+    build: .
+    # Or use a pre-built image once published:
+    # image: ghcr.io/tmunongo/shelfstone:latest
+    container_name: shelfstone
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /path/to/your/audiobooks:/data/audiobooks:ro # read-only mount
+      - shelfstone_data:/data # persists DB
+    environment:
+      AUDIOBOOK_DATA_DIR: /data/audiobooks
+      DATABASE_PATH: /data/shelfstone.db
+      APP_PORT: 8080
+      AUTH_USERNAME: admin
+      AUTH_PASSWORD: changeme # change before first run
+      SCAN_INTERVAL_MINUTES: 60
+      # BASE_URL: https://books.yourdomain.com  # uncomment for reverse proxy
+
+volumes:
+  shelfstone_data:

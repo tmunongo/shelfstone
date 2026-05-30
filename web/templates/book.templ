@@ -1,0 +1,112 @@
+package templates
+
+import (
+	"fmt"
+	"github.com/tmunongo/shelfstone/internal/models"
+)
+
+templ BookPage(user *models.User, book *models.Audiobook, notes []models.Note) {
+	@Base(user, book.Title) {
+		<div class="book-detail">
+			<div class="book-detail__hero">
+				<div class="book-detail__cover">
+					if book.CoverPath != "" {
+						<img src={ fmt.Sprintf("/media/%s", book.CoverPath) } alt={ book.Title }/>
+					} else {
+						@CoverPlaceholder(book.Title)
+					}
+				</div>
+				<div class="book-detail__info">
+					<h1 class="book-detail__title">{ book.Title }</h1>
+					<p class="book-detail__author">by { book.Author }</p>
+					if book.Narrator != "" {
+						<p class="book-detail__narrator">narrated by { book.Narrator }</p>
+					}
+					<p class="book-detail__duration">{ formatDuration(book.DurationSec) }</p>
+					if book.Progress != nil && !book.Progress.Completed {
+						<div class="book-detail__progress">
+							<div class="progress-bar">
+								<div class="progress-bar__fill"
+								     style={ fmt.Sprintf("width:%.1f%%", progressPct(book)) }></div>
+							</div>
+							<p class="book-detail__position">
+								{ formatDuration(int64(book.Progress.PositionSec)) } of { formatDuration(book.DurationSec) }
+							</p>
+						</div>
+					}
+					<div class="book-detail__actions">
+						<a href={ templ.SafeURL(fmt.Sprintf("/book/%d/listen", book.ID)) }
+						   class="btn btn--primary">
+							if book.Progress != nil && book.Progress.PositionSec > 0 {
+								Resume →
+							} else {
+								Listen →
+							}
+						</a>
+					</div>
+					if book.Description != "" {
+						<p class="book-detail__description">{ book.Description }</p>
+					}
+					<div class="book-detail__tags" x-data={ fmt.Sprintf("tagEditor({ bookID: %d })", book.ID) }>
+						<div class="tags-list">
+							<template x-for="tag in tags" :key="tag">
+								<span class="tag">
+									<span x-text="tag"></span>
+									<button class="tag__remove" @click="removeTag(tag)">×</button>
+								</span>
+							</template>
+						</div>
+						<div class="tag-input-row">
+							<input class="field__input field__input--sm" type="text" x-model="newTag"
+							       placeholder="Add tag…"
+							       @keydown.enter.prevent="addTag()"/>
+							<button class="btn btn--ghost btn--sm" @click="addTag()">Add</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			if len(book.Chapters) > 0 {
+				<section class="book-section">
+					<h2 class="section-title">Chapters</h2>
+					<ol class="chapter-list">
+						for _, ch := range book.Chapters {
+							<li class="chapter-list__item">
+								<a href={ templ.SafeURL(fmt.Sprintf("/book/%d/listen?t=%.0f", book.ID, ch.StartSec)) }
+								   class="chapter-list__link">
+									<span class="chapter-list__title">{ ch.Title }</span>
+									<span class="chapter-list__time">{ formatDuration(int64(ch.EndSec - ch.StartSec)) }</span>
+								</a>
+							</li>
+						}
+					</ol>
+				</section>
+			}
+			<section class="book-section"
+			         x-data={ fmt.Sprintf("noteEditor(%d)", book.ID) }>
+				<h2 class="section-title">Notes</h2>
+				<div class="note-input">
+					<textarea class="field__textarea" x-model="newNote"
+					          placeholder="Add a note…" rows="3"></textarea>
+					<button class="btn btn--secondary" @click="saveNote()">Save note</button>
+				</div>
+				<div class="note-list">
+					if len(notes) == 0 {
+						<p class="note-list__empty">No notes yet.</p>
+					}
+					for _, n := range notes {
+						<div class="note" id={ fmt.Sprintf("note-%d", n.ID) }>
+							<p class="note__body">{ n.Body }</p>
+							<div class="note__meta">
+								<span>{ n.CreatedAt.Format("2 Jan 2006") }</span>
+								<button class="note__delete"
+								        onclick={ templ.ComponentScript{Call: fmt.Sprintf("deleteNote(%d)", n.ID)} }>
+									Delete
+								</button>
+							</div>
+						</div>
+					}
+				</div>
+			</section>
+		</div>
+	}
+}

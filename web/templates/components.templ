@@ -1,0 +1,45 @@
+package templates
+
+import (
+	"fmt"
+	"github.com/tmunongo/shelfstone/internal/models"
+)
+
+templ BookCard(b *models.Audiobook) {
+	<a href={ templ.SafeURL(fmt.Sprintf("/book/%d", b.ID)) } class="book-card">
+		<div class="book-card__cover">
+			if b.CoverPath != "" {
+				<img src={ fmt.Sprintf("/media/%s", b.CoverPath) } alt={ b.Title } loading="lazy"/>
+			} else {
+				@CoverPlaceholder(b.Title)
+			}
+			if b.Progress != nil && !b.Progress.Completed {
+				<div class="book-card__progress-bar">
+					<div class="book-card__progress-fill"
+					     style={ fmt.Sprintf("width:%.1f%%", progressPct(b)) }></div>
+				</div>
+			}
+			if b.Progress != nil && b.Progress.Completed {
+				<div class="book-card__badge">Done</div>
+			}
+		</div>
+		<div class="book-card__meta">
+			<p class="book-card__title">{ b.Title }</p>
+			<p class="book-card__author">{ b.Author }</p>
+		</div>
+	</a>
+}
+
+templ CoverPlaceholder(title string) {
+	<div class="cover-placeholder" aria-label={ title }>
+		<svg viewBox="0 0 80 110" xmlns="http://www.w3.org/2000/svg">
+			<rect width="80" height="110" rx="3" fill="var(--color-surface-raised)"/>
+			<rect x="8" y="8" width="64" height="94" rx="2" fill="var(--color-surface)"/>
+			<rect x="16" y="24" width="48" height="4" rx="2" fill="var(--color-text-muted)"/>
+			<rect x="16" y="34" width="32" height="3" rx="1.5" fill="var(--color-border)"/>
+			<rect x="16" y="56" width="48" height="2" rx="1" fill="var(--color-border)"/>
+			<rect x="16" y="62" width="40" height="2" rx="1" fill="var(--color-border)"/>
+			<rect x="16" y="68" width="44" height="2" rx="1" fill="var(--color-border)"/>
+		</svg>
+	</div>
+}

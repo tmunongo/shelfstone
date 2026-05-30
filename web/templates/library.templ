@@ -1,0 +1,76 @@
+package templates
+
+import (
+	"fmt"
+	"strconv"
+	"github.com/tmunongo/shelfstone/internal/models"
+)
+
+templ LibraryPage(user *models.User, books []*models.Audiobook, allTags []models.Tag, search string, activeTagIDs []int64) {
+	@Base(user, "Library") {
+		<div class="library">
+			<div class="library__header">
+				<h2 class="section-title">Library</h2>
+				<div class="library__controls">
+					<form class="library__search" method="GET" action="/library">
+						<input class="field__input" type="search" name="q" value={ search }
+						       placeholder="Search title, author, narrator…"/>
+						<button class="btn btn--secondary" type="submit">Search</button>
+					</form>
+					<button class="btn btn--ghost"
+					        hx-post="/api/scan"
+					        onclick="fetch('/api/scan',{method:'POST'}).then(()=>alert('Scan started'))">
+						↻ Rescan
+					</button>
+				</div>
+			</div>
+			if len(allTags) > 0 {
+				<div class="tag-filter">
+					<a href="/library" class={ tagFilterClass(activeTagIDs, 0) }>All</a>
+					for _, t := range allTags {
+						<a href={ templ.SafeURL(fmt.Sprintf("/library?tag=%d", t.ID)) }
+						   class={ tagFilterClass(activeTagIDs, t.ID) }>
+							{ t.Name }
+						</a>
+					}
+				</div>
+			}
+			if len(books) == 0 {
+				<div class="library__empty">
+					<p>No books found.</p>
+				</div>
+			} else {
+				<div class="book-grid">
+					for _, b := range books {
+						@BookCard(b)
+					}
+				</div>
+			}
+		</div>
+	}
+}
+
+func tagFilterClass(activeTagIDs []int64, tagID int64) string {
+	if tagID == 0 && len(activeTagIDs) == 0 {
+		return "tag tag--active"
+	}
+	for _, id := range activeTagIDs {
+		if id == tagID {
+			return "tag tag--active"
+		}
+	}
+	return "tag"
+}
+
+func containsTag(activeTagIDs []int64, id int64) bool {
+	for _, a := range activeTagIDs {
+		if a == id {
+			return true
+		}
+	}
+	return false
+}
+
+func int64Str(i int64) string {
+	return strconv.FormatInt(i, 10)
+}

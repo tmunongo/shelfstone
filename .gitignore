@@ -1,0 +1,12 @@
+bin/
+*.db
+*.db-wal
+*.db-shm
+web/static/js/alpine.min.js
+
+.env
+
+# generated templ files
+*_templ.go
+
+tmp/*
