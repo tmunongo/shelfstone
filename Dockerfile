@@ -6,7 +6,7 @@ RUN apk add --no-cache gcc musl-dev sqlite-dev
 WORKDIR /build
 
 # Install templ code generator
-RUN go install github.com/a-h/templ/cmd/templ@v0.2.793
+RUN go install github.com/a-h/templ/cmd/templ@v0.3.1020
 
 COPY go.mod go.sum ./
 RUN go mod download
