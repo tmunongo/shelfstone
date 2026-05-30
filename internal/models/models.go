@@ -60,10 +60,11 @@ type Tag struct {
 	Name string
 }
 
-// User is a local account. Currently single-user; multi-user is future scope.
+// User is a local account. Supports multi-user roles ("admin" and "user").
 type User struct {
 	ID           int64
 	Username     string
 	PasswordHash string
+	Role         string
 	CreatedAt    time.Time
 }

@@ -9,8 +9,8 @@ import (
 
 func GetUserByID(db *sql.DB, id int64) (*models.User, error) {
 	var u models.User
-	err := db.QueryRow(`SELECT id, username, password_hash, created_at FROM users WHERE id = ?`, id).
-		Scan(&u.ID, &u.Username, &u.PasswordHash, &u.CreatedAt)
+	err := db.QueryRow(`SELECT id, username, password_hash, role, created_at FROM users WHERE id = ?`, id).
+		Scan(&u.ID, &u.Username, &u.PasswordHash, &u.Role, &u.CreatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}

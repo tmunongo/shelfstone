@@ -94,6 +94,35 @@ After editing any `.templ` template, run `make generate` (or `templ generate`) t
 | `SCAN_INTERVAL_MINUTES`   | `60`                  | Library rescan frequency               |
 | `BASE_URL`                | _(empty)_             | Set for reverse proxy setups           |
 
+## Multi-User Support & CLI
+
+Shelfstone natively supports multiple users, ensuring each household member gets their own private session, audiobook listening history, and annotations.
+
+### Roles
+Users can have one of two roles:
+- `admin`: Full administration access (such as triggering library rescans).
+- `user`: Standard household member access (listening to audiobooks and managing personal progress/notes).
+
+The primary admin account is bootstrapped automatically at startup using the `AUTH_USERNAME` and `AUTH_PASSWORD` environment variables.
+
+### Creating Accounts via CLI
+You can create accounts for other household members directly from your terminal using command-line flags.
+
+**Local Development:**
+```bash
+# Create a standard user
+go run ./cmd/server -create-user "jane" -create-password "password123"
+
+# Create an administrator
+go run ./cmd/server -create-user "bob" -create-password "adminpass" -admin
+```
+
+**Docker Container:**
+```bash
+# Create a standard user inside your running container
+docker exec -it shelfstone /app/shelfstone -create-user "jane" -create-password "password123"
+```
+
 ## Expected Directory Structure
 
 ```

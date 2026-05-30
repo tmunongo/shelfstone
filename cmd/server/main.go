@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -18,11 +19,51 @@ import (
 )
 
 func main() {
+	// Define flags
+	createUser := flag.String("create-user", "", "Username of user to create")
+	createPassword := flag.String("create-password", "", "Password of user to create")
+	isAdmin := flag.Bool("admin", false, "Assign admin role to the new user")
+
+	flag.Parse()
+
 	// Load .env only in local environment
 	if _, err := os.Stat(".env"); err == nil {
 		if err := godotenv.Load(); err != nil {
 			log.Printf("Warning: failed to load .env file: %v", err)
 		}
+	}
+
+	if *createUser != "" {
+		if *createPassword == "" {
+			log.Fatal("Error: -create-password is required when using -create-user")
+		}
+
+		cfg := loadConfig()
+
+		database, err := db.Open(cfg.DatabasePath)
+		if err != nil {
+			log.Fatalf("failed to open database: %v", err)
+		}
+		defer database.Close()
+
+		if err := db.Migrate(database); err != nil {
+			log.Fatalf("failed to run migrations: %v", err)
+		}
+
+		authService := auth.New(database, "", "")
+
+		role := "user"
+		if *isAdmin {
+			role = "admin"
+		}
+
+		log.Printf("Creating user %q with role %q...", *createUser, role)
+		if err := authService.CreateUser(*createUser, *createPassword, role); err != nil {
+			log.Fatalf("failed to create user: %v", err)
+		}
+
+		log.Printf("Successfully created user %q with role %q!", *createUser, role)
+		os.Exit(0)
 	}
 
 	cfg := loadConfig()

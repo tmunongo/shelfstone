@@ -67,7 +67,13 @@ type migration struct {
 var migrations = []migration{
 	{1, migration1},
 	{2, migration2},
+	{3, migration3},
 }
+
+// migration3 adds a role column to the users table.
+const migration3 = `
+ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user';
+`
 
 // migration2 adds a persistent sessions table so logins survive server restarts.
 const migration2 = `

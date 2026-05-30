@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -13,6 +14,8 @@ import (
 	dbpkg "github.com/tmunongo/shelfstone/internal/db"
 	"github.com/tmunongo/shelfstone/internal/models"
 )
+
+var ErrUserExists = errors.New("user already exists")
 
 const sessionCookie = "shelfstone_session"
 const sessionDuration = 30 * 24 * time.Hour
@@ -38,6 +41,25 @@ func New(database *sql.DB, username, password string) *Service {
 	return s
 }
 
+// CreateUser creates a new user with the given username, password, and role.
+// Returns ErrUserExists if the username is already taken.
+func (s *Service) CreateUser(username, password, role string) error {
+	var count int
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM users WHERE username = ?`, username).Scan(&count)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return ErrUserExists
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	_, err = s.db.Exec(`INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)`, username, string(hash), role)
+	return err
+}
+
 func (s *Service) ensureUser(username, password string) error {
 	var count int
 	err := s.db.QueryRow(`SELECT COUNT(*) FROM users WHERE username = ?`, username).Scan(&count)
@@ -45,21 +67,18 @@ func (s *Service) ensureUser(username, password string) error {
 		return err
 	}
 	if count > 0 {
-		return nil
-	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
+		// Update their role to admin, just in case they were migrated with the default 'user' role
+		_, err = s.db.Exec(`UPDATE users SET role = 'admin' WHERE username = ?`, username)
 		return err
 	}
-	_, err = s.db.Exec(`INSERT INTO users (username, password_hash) VALUES (?, ?)`, username, string(hash))
-	return err
+	return s.CreateUser(username, password, "admin")
 }
 
 // Login verifies credentials and returns a session token on success.
 func (s *Service) Login(username, password string) (string, error) {
 	var user models.User
-	err := s.db.QueryRow(`SELECT id, username, password_hash FROM users WHERE username = ?`, username).
-		Scan(&user.ID, &user.Username, &user.PasswordHash)
+	err := s.db.QueryRow(`SELECT id, username, password_hash, role FROM users WHERE username = ?`, username).
+		Scan(&user.ID, &user.Username, &user.PasswordHash, &user.Role)
 	if err == sql.ErrNoRows {
 		return "", fmt.Errorf("invalid credentials")
 	}
