@@ -4,11 +4,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dhowden/tag"
 )
@@ -36,7 +40,8 @@ func Extract(absDir, relDir, ext string) (*Meta, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ExtractFile(primary, relDir)
+	relFile := filepath.ToSlash(filepath.Join(relDir, filepath.Base(primary)))
+	return ExtractFile(primary, relFile)
 }
 
 // ExtractFile reads metadata from a single specific audio file.
@@ -240,10 +245,10 @@ func authorFromDir(relDir string) string {
 
 // findCoverFile looks for a cover image in the directory.
 func findCoverFile(absDir, relDir string) string {
-	candidates := []string{"cover.jpg", "cover.jpeg", "cover.png", "folder.jpg", "folder.png"}
+	candidates := []string{"cover.extracted.jpg", "cover.downloaded.jpg", "cover.jpg", "cover.jpeg", "cover.png", "folder.jpg", "folder.png"}
 	for _, name := range candidates {
 		if _, err := os.Stat(filepath.Join(absDir, name)); err == nil {
-			return filepath.Join(relDir, name)
+			return filepath.ToSlash(filepath.Join(relDir, name))
 		}
 	}
 	return ""
@@ -270,4 +275,96 @@ func coalesce(vals ...string) string {
 		}
 	}
 	return ""
+}
+
+type openLibrarySearchResponse struct {
+	Docs []struct {
+		CoverI int      `json:"cover_i"`
+		ISBN   []string `json:"isbn"`
+	} `json:"docs"`
+}
+
+// FetchOnlineCover queries Open Library to search for a book cover by title and author,
+// and returns the raw image bytes if found.
+func FetchOnlineCover(title, author string) ([]byte, error) {
+	if title == "" {
+		return nil, fmt.Errorf("empty title")
+	}
+
+	// Prepare search query.
+	query := url.Values{}
+	query.Set("title", title)
+	if author != "" {
+		query.Set("author", author)
+	}
+	query.Set("limit", "1")
+
+	searchURL := "https://openlibrary.org/search.json?" + query.Encode()
+
+	req, err := http.NewRequest("GET", searchURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "Shelfstone/1.0 (https://github.com/tmunongo/shelfstone)")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("search failed with status: %s", resp.Status)
+	}
+
+	var searchResult openLibrarySearchResponse
+	if err := json.NewDecoder(resp.Body).Decode(&searchResult); err != nil {
+		return nil, err
+	}
+
+	if len(searchResult.Docs) == 0 {
+		return nil, fmt.Errorf("no books found on Open Library")
+	}
+
+	doc := searchResult.Docs[0]
+	var coverURL string
+
+	if doc.CoverI > 0 {
+		coverURL = fmt.Sprintf("https://covers.openlibrary.org/b/id/%d-L.jpg", doc.CoverI)
+	} else if len(doc.ISBN) > 0 {
+		coverURL = fmt.Sprintf("https://covers.openlibrary.org/b/isbn/%s-L.jpg", doc.ISBN[0])
+	} else {
+		return nil, fmt.Errorf("no cover art found for book")
+	}
+
+	// Download the cover image.
+	reqCover, err := http.NewRequest("GET", coverURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	reqCover.Header.Set("User-Agent", "Shelfstone/1.0 (https://github.com/tmunongo/shelfstone)")
+
+	respCover, err := client.Do(reqCover)
+	if err != nil {
+		return nil, err
+	}
+	defer respCover.Body.Close()
+
+	if respCover.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("cover download failed with status: %s", respCover.Status)
+	}
+
+	data, err := io.ReadAll(respCover.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// Double check that we didn't just get a tiny placeholder or blank response.
+	// 1x1 pixel empty images are common placeholder responses. A real cover should be > 1KB.
+	if len(data) < 1000 {
+		return nil, fmt.Errorf("downloaded image is too small to be a cover (%d bytes)", len(data))
+	}
+
+	return data, nil
 }

@@ -84,7 +84,21 @@ func (h *handlers) library(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	books, err := dbpkg.ListAudiobooks(h.cfg.DB, search, tagIDs)
+	sortBy := r.URL.Query().Get("sort")
+	if sortBy == "" {
+		sortBy = "title_asc"
+	}
+
+	pageStr := r.URL.Query().Get("page")
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	limit := 24
+	offset := (page - 1) * limit
+
+	books, totalCount, err := dbpkg.ListAudiobooks(h.cfg.DB, search, tagIDs, sortBy, limit, offset)
 	if err != nil {
 		h.internalError(w, err)
 		return
@@ -101,7 +115,12 @@ func (h *handlers) library(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	templates.LibraryPage(user, books, allTags, search, tagIDs).Render(r.Context(), w)
+	totalPages := (totalCount + limit - 1) / limit
+	if totalPages < 1 {
+		totalPages = 1
+	}
+
+	templates.LibraryPage(user, books, allTags, search, tagIDs, sortBy, page, totalPages).Render(r.Context(), w)
 }
 
 // ---- Book ----

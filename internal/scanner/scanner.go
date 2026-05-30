@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/tmunongo/shelfstone/internal/db"
 	"github.com/tmunongo/shelfstone/internal/metadata"
@@ -113,6 +114,10 @@ func (s *Scanner) processBook(ctx context.Context, absDir, relDir, ext string) e
 		meta = metadata.Fallback(absDir, relDir, ext)
 	}
 
+	if meta.CoverPath == "" {
+		meta.CoverPath = s.fetchAndSaveOnlineCover(absDir, relDir, meta.Title, meta.Author)
+	}
+
 	book := &models.Audiobook{
 		Title:       meta.Title,
 		Author:      meta.Author,
@@ -129,7 +134,6 @@ func (s *Scanner) processBook(ctx context.Context, absDir, relDir, ext string) e
 		return err
 	}
 
-	log.Printf("scanner: processed book %s (ID %d): duration=%ds, chapters=%d", relDir, id, meta.DurationSec, len(meta.Chapters))
 	return s.saveChapters(id, relDir, meta.Chapters)
 }
 
@@ -144,6 +148,12 @@ func (s *Scanner) processBookFile(ctx context.Context, absFile, relFile string) 
 		relDir := filepath.Dir(relFile)
 		meta = metadata.Fallback(dir, relDir, ext)
 		meta.Title = metadata.TitleFromFile(relFile)
+	}
+
+	if meta.CoverPath == "" {
+		dir := filepath.Dir(absFile)
+		relDir := filepath.Dir(relFile)
+		meta.CoverPath = s.fetchAndSaveOnlineCover(dir, relDir, meta.Title, meta.Author)
 	}
 
 	book := &models.Audiobook{
@@ -162,7 +172,6 @@ func (s *Scanner) processBookFile(ctx context.Context, absFile, relFile string) 
 		return err
 	}
 
-	log.Printf("scanner: processed file-book %s (ID %d): duration=%ds", relFile, id, meta.DurationSec)
 	return s.saveChapters(id, relFile, meta.Chapters)
 }
 
@@ -184,6 +193,34 @@ func (s *Scanner) saveChapters(id int64, label string, chapters []metadata.Chapt
 		log.Printf("scanner: chapter replace error for %s: %v", label, err)
 	}
 	return nil
+}
+
+func (s *Scanner) fetchAndSaveOnlineCover(absDir, relDir, title, author string) string {
+	// Check if there is already a downloaded cover
+	downloadedPath := filepath.Join(absDir, "cover.downloaded.jpg")
+	if _, err := os.Stat(downloadedPath); err == nil {
+		return filepath.ToSlash(filepath.Join(relDir, "cover.downloaded.jpg"))
+	}
+
+	// Attempt fetch
+	log.Printf("scanner: fetching online cover for %q by %q...", title, author)
+	data, err := metadata.FetchOnlineCover(title, author)
+	if err != nil {
+		// Log the error but keep going silently
+		return ""
+	}
+
+	// Save
+	if err := os.WriteFile(downloadedPath, data, 0644); err != nil {
+		log.Printf("scanner: failed to save online cover to %s: %v", downloadedPath, err)
+		return ""
+	}
+
+	log.Printf("scanner: successfully downloaded cover for %q", title)
+	// Sleep 1 second to respect Open Library's API rate limits
+	time.Sleep(1 * time.Second)
+
+	return filepath.ToSlash(filepath.Join(relDir, "cover.downloaded.jpg"))
 }
 
 func isSupportedAudio(ext string) bool {

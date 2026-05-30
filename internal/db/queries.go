@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/tmunongo/shelfstone/internal/models"
@@ -42,46 +43,73 @@ func GetAudiobook(db *sql.DB, id int64) (*models.Audiobook, error) {
 	return scanAudiobook(row)
 }
 
-func ListAudiobooks(db *sql.DB, search string, tagIDs []int64) ([]*models.Audiobook, error) {
-	// Simple approach: fetch all, filter in SQL by search term.
-	// Tag filtering via a subquery.
-	query := `
-		SELECT DISTINCT a.id, a.title, a.author, a.narrator, a.description,
-			a.cover_path, a.duration_sec, a.file_path, a.file_format, a.created_at, a.updated_at
-		FROM audiobooks a`
-
-	args := []any{}
+func ListAudiobooks(db *sql.DB, search string, tagIDs []int64, sortBy string, limit, offset int) ([]*models.Audiobook, int, error) {
+	var whereClauses []string
+	var args []any
+	var joinClause string
 
 	if len(tagIDs) > 0 {
-		query += `
-		JOIN audiobook_tags at ON at.audiobook_id = a.id
-		WHERE at.tag_id IN (`
-		for i, tid := range tagIDs {
-			if i > 0 {
-				query += ","
-			}
-			query += "?"
+		joinClause = "JOIN audiobook_tags at ON at.audiobook_id = a.id"
+		var placeholders []string
+		for _, tid := range tagIDs {
+			placeholders = append(placeholders, "?")
 			args = append(args, tid)
 		}
-		query += ")"
+		whereClauses = append(whereClauses, fmt.Sprintf("at.tag_id IN (%s)", strings.Join(placeholders, ",")))
 	}
 
 	if search != "" {
-		if len(tagIDs) > 0 {
-			query += " AND "
-		} else {
-			query += " WHERE "
-		}
 		like := "%" + search + "%"
-		query += "(a.title LIKE ? OR a.author LIKE ? OR a.narrator LIKE ?)"
+		whereClauses = append(whereClauses, "(a.title LIKE ? OR a.author LIKE ? OR a.narrator LIKE ?)")
 		args = append(args, like, like, like)
 	}
 
-	query += " ORDER BY a.title ASC"
+	wherePart := ""
+	if len(whereClauses) > 0 {
+		wherePart = "WHERE " + strings.Join(whereClauses, " AND ")
+	}
 
-	rows, err := db.Query(query, args...)
+	// 1. Get total count
+	countQuery := fmt.Sprintf(`
+		SELECT COUNT(DISTINCT a.id)
+		FROM audiobooks a
+		%s
+		%s`, joinClause, wherePart)
+
+	var totalCount int
+	err := db.QueryRow(countQuery, args...).Scan(&totalCount)
 	if err != nil {
-		return nil, fmt.Errorf("list audiobooks: %w", err)
+		return nil, 0, fmt.Errorf("list audiobooks count: %w", err)
+	}
+
+	// 2. Main query with sorting
+	orderClause := "ORDER BY a.title ASC"
+	switch sortBy {
+	case "title_desc":
+		orderClause = "ORDER BY a.title DESC"
+	case "added_desc":
+		orderClause = "ORDER BY a.created_at DESC"
+	case "duration_desc":
+		orderClause = "ORDER BY a.duration_sec DESC"
+	case "duration_asc":
+		orderClause = "ORDER BY a.duration_sec ASC"
+	}
+
+	mainQuery := fmt.Sprintf(`
+		SELECT DISTINCT a.id, a.title, a.author, a.narrator, a.description,
+			a.cover_path, a.duration_sec, a.file_path, a.file_format, a.created_at, a.updated_at
+		FROM audiobooks a
+		%s
+		%s
+		%s`, joinClause, wherePart, orderClause)
+
+	if limit > 0 {
+		mainQuery += fmt.Sprintf(" LIMIT %d OFFSET %d", limit, offset)
+	}
+
+	rows, err := db.Query(mainQuery, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list audiobooks: %w", err)
 	}
 	defer rows.Close()
 
@@ -89,11 +117,11 @@ func ListAudiobooks(db *sql.DB, search string, tagIDs []int64) ([]*models.Audiob
 	for rows.Next() {
 		b, err := scanAudiobookRow(rows)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		books = append(books, b)
 	}
-	return books, rows.Err()
+	return books, totalCount, rows.Err()
 }
 
 func scanAudiobook(row *sql.Row) (*models.Audiobook, error) {
