@@ -10,18 +10,28 @@ templ LibraryPage(user *models.User, books []*models.Audiobook, allTags []models
 	@Base(user, "Library") {
 		<div class="library">
 			<div class="library__header">
-				<h2 class="section-title">Library</h2>
+				<div>
+					<h2 class="section-title">Library</h2>
+				</div>
 				<div class="library__controls">
+					<!-- Search Form with Custom Styling -->
 					<form class="library__search" method="GET" action="/library">
-						<input class="field__input" type="search" name="q" value={ search }
+						<input class="field__input field__input--sm" type="search" name="q" value={ search }
 						       placeholder="Search title, author, narrator…"/>
 						for _, tagID := range activeTagIDs {
 							<input type="hidden" name="tag" value={ strconv.FormatInt(tagID, 10) } />
 						}
 						<input type="hidden" name="sort" value={ sortBy } />
-						<button class="btn btn--secondary" type="submit">Search</button>
+						<button class="btn btn--primary btn--sm" type="submit">
+							<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+								<circle cx="11" cy="11" r="8"/>
+								<line x1="21" y1="21" x2="16.65" y2="16.65"/>
+							</svg>
+							Search
+						</button>
 					</form>
 
+					<!-- Sort Dropdown Form -->
 					<form class="library__sort" method="GET" action="/library">
 						if search != "" {
 							<input type="hidden" name="q" value={ search } />
@@ -29,7 +39,7 @@ templ LibraryPage(user *models.User, books []*models.Audiobook, allTags []models
 						for _, tagID := range activeTagIDs {
 							<input type="hidden" name="tag" value={ strconv.FormatInt(tagID, 10) } />
 						}
-						<select class="field__input" name="sort" onchange="this.form.submit()">
+						<select class="field__input field__input--sm" name="sort" onchange="this.form.submit()">
 							<option value="title_asc" selected?={ sortBy == "title_asc" }>Title (A-Z)</option>
 							<option value="title_desc" selected?={ sortBy == "title_desc" }>Title (Z-A)</option>
 							<option value="added_desc" selected?={ sortBy == "added_desc" }>Recently Added</option>
@@ -38,27 +48,37 @@ templ LibraryPage(user *models.User, books []*models.Audiobook, allTags []models
 						</select>
 					</form>
 
-					<button class="btn btn--ghost"
+					<!-- Trigger scan button -->
+					<button class="btn btn--secondary btn--sm"
 					        hx-post="/api/scan"
-					        onclick="fetch('/api/scan',{method:'POST'}).then(()=>alert('Scan started'))">
-						↻ Rescan
+					        onclick="fetch('/api/scan',{method:'POST'}).then(()=>alert('Library scan initiated'))">
+						<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+							<path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+						</svg>
+						Rescan
 					</button>
 				</div>
 			</div>
+
+			<!-- Tags Filter Pills -->
 			if len(allTags) > 0 {
 				<div class="tag-filter">
-					<a href={ templ.SafeURL(libraryURL(search, sortBy, 1, nil)) } class={ tagFilterClass(activeTagIDs, 0) }>All</a>
+					<a href={ templ.SafeURL(libraryURL(search, sortBy, 1, nil)) } class={ tagFilterClass(activeTagIDs, 0) }>
+						All Books
+					</a>
 					for _, t := range allTags {
 						<a href={ templ.SafeURL(libraryURL(search, sortBy, 1, []int64{t.ID})) }
 						   class={ tagFilterClass(activeTagIDs, t.ID) }>
-							{ t.Name }
+							# { t.Name }
 						</a>
 					}
 				</div>
 			}
+
+			<!-- Books Grid / Empty State -->
 			if len(books) == 0 {
 				<div class="library__empty">
-					<p>No books found.</p>
+					<p>No audiobooks found matching your active filters or search terms.</p>
 				</div>
 			} else {
 				<div class="book-grid">
@@ -66,6 +86,8 @@ templ LibraryPage(user *models.User, books []*models.Audiobook, allTags []models
 						@BookCard(b)
 					}
 				</div>
+
+				<!-- Tactile Pagination -->
 				if totalPages > 1 {
 					<div class="pagination">
 						if currentPage > 1 {

@@ -13,6 +13,16 @@ templ BookCard(b *models.Audiobook) {
 			} else {
 				@CoverPlaceholder(b.Title)
 			}
+			
+			<!-- Hover interaction overlays -->
+			<div class="book-card__overlay">
+				<div class="book-card__play-btn">
+					<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+						<path d="M8 5v14l11-7z"/>
+					</svg>
+				</div>
+			</div>
+
 			if b.Progress != nil && !b.Progress.Completed {
 				<div class="book-card__progress-bar">
 					<div class="book-card__progress-fill"
@@ -33,8 +43,8 @@ templ BookCard(b *models.Audiobook) {
 templ CoverPlaceholder(title string) {
 	<div class="cover-placeholder" aria-label={ title }>
 		<svg viewBox="0 0 80 110" xmlns="http://www.w3.org/2000/svg">
-			<rect width="80" height="110" rx="3" fill="var(--color-surface-raised)"/>
-			<rect x="8" y="8" width="64" height="94" rx="2" fill="var(--color-surface)"/>
+			<rect width="80" height="110" rx="6" fill="var(--color-surface-raised)"/>
+			<rect x="8" y="8" width="64" height="94" rx="4" fill="var(--color-surface)"/>
 			<rect x="16" y="24" width="48" height="4" rx="2" fill="var(--color-text-muted)"/>
 			<rect x="16" y="34" width="32" height="3" rx="1.5" fill="var(--color-border)"/>
 			<rect x="16" y="56" width="48" height="2" rx="1" fill="var(--color-border)"/>

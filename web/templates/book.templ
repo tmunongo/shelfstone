@@ -8,6 +8,11 @@ import (
 templ BookPage(user *models.User, book *models.Audiobook, notes []models.Note) {
 	@Base(user, book.Title) {
 		<div class="book-detail">
+			<div class="book-detail__back">
+				<a href="/library" onclick="if(document.referrer && document.referrer.includes('/library')) { event.preventDefault(); history.back(); }" class="btn btn--ghost btn--sm">
+					← Back to Library
+				</a>
+			</div>
 			<div class="book-detail__hero">
 				<div class="book-detail__cover">
 					if book.CoverPath != "" {

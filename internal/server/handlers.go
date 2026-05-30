@@ -65,7 +65,20 @@ func (h *handlers) home(w http.ResponseWriter, r *http.Request) {
 		b.Progress = prog
 	}
 
-	templates.HomePage(user, recent).Render(r.Context(), w)
+	// Load recently added books and total library count
+	recentlyAdded, totalCount, err := dbpkg.ListAudiobooks(h.cfg.DB, "", nil, "added_desc", 6, 0)
+	if err != nil {
+		h.internalError(w, err)
+		return
+	}
+
+	// Load progress for each recently added book
+	for _, b := range recentlyAdded {
+		prog, _ := dbpkg.GetProgress(h.cfg.DB, b.ID, user.ID)
+		b.Progress = prog
+	}
+
+	templates.HomePage(user, recent, recentlyAdded, totalCount).Render(r.Context(), w)
 }
 
 // ---- Library ----
